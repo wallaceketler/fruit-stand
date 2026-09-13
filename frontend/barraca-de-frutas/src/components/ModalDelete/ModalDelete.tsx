@@ -10,26 +10,41 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { fruitRepository } from '@/features/fruits/local-storage-fruit-repository'
+import { deleteFruit } from '@/features/fruits/fruits-slice'
+import { useAppDispatch } from '@/lib/redux-hooks'
 import { Trash2 } from 'lucide-react'
 
 interface ModalDeleteProps {
   idFruit: string
   isOpen: boolean
-  onDeleted: (id: string) => void
+  onDeletingIdChange: (id: string | null) => void
   setOpen: (isOpen: boolean) => void
 }
 
 export function ModalDelete({
   idFruit,
   isOpen,
-  onDeleted,
+  onDeletingIdChange,
   setOpen,
 }: ModalDeleteProps) {
-  const deleteFruit = async () => {
-    await fruitRepository.remove(idFruit)
+  const dispatch = useAppDispatch()
+
+  const removeFruit = async () => {
     setOpen(false)
-    onDeleted(idFruit)
+    onDeletingIdChange(idFruit)
+
+    const reduceMotion =
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
+
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, reduceMotion ? 0 : 240)
+    })
+
+    try {
+      await dispatch(deleteFruit(idFruit)).unwrap()
+    } finally {
+      onDeletingIdChange(null)
+    }
   }
 
   return (
@@ -48,7 +63,7 @@ export function ModalDelete({
           <WhiteButton onClick={() => setOpen(false)} type="button">
             Não, manter
           </WhiteButton>
-          <RedButton id="ModalDelete-delete" onClick={deleteFruit} type="button">
+          <RedButton id="ModalDelete-delete" onClick={removeFruit} type="button">
             Sim, Excluir
           </RedButton>
         </DialogFooter>

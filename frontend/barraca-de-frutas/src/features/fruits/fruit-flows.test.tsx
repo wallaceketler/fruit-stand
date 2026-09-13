@@ -4,8 +4,10 @@ import { HomePage } from '@/screens/homePage/HomePage'
 import { RegisterFruit } from '@/screens/registerFruit/RegisterFruit'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { AnchorHTMLAttributes, ReactNode } from 'react'
+import type { AnchorHTMLAttributes, ReactElement, ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { makeStore } from '@/lib/store'
+import { Provider } from 'react-redux'
 
 const router = vi.hoisted(() => ({
   push: vi.fn(),
@@ -30,6 +32,10 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+function renderWithStore(component: ReactElement) {
+  return render(<Provider store={makeStore()}>{component}</Provider>)
+}
+
 describe('fluxos de frutas', () => {
   beforeEach(() => {
     router.push.mockReset()
@@ -37,7 +43,7 @@ describe('fluxos de frutas', () => {
 
   it('cadastra uma fruta no localStorage', async () => {
     const user = userEvent.setup()
-    render(<RegisterFruit />)
+    renderWithStore(<RegisterFruit />)
 
     await user.type(screen.getByPlaceholderText('Nome da fruta'), 'Banana')
     await user.type(screen.getByPlaceholderText('Preço do Kilo'), '5,50')
@@ -70,7 +76,7 @@ describe('fluxos de frutas', () => {
     )
     localStorage.setItem('lastIndex', '2')
 
-    render(<HomePage />)
+    renderWithStore(<HomePage />)
 
     expect(await screen.findByText('Banana')).toBeInTheDocument()
     expect(screen.getByText('Laranja')).toBeInTheDocument()
@@ -90,7 +96,7 @@ describe('fluxos de frutas', () => {
     )
     localStorage.setItem('lastIndex', '1')
 
-    render(<EditFruit idFruit="1" />)
+    renderWithStore(<EditFruit idFruit="1" />)
 
     const nameInput = await screen.findByPlaceholderText('Nome da fruta')
     const priceInput = screen.getByPlaceholderText('Preço do Kilo')
@@ -117,18 +123,29 @@ describe('fluxos de frutas', () => {
 
   it('exclui uma fruta após confirmar no modal', async () => {
     const user = userEvent.setup()
-     localStorage.setItem(
+    const onDeletingIdChange = vi.fn()
+    localStorage.setItem(
       '1',
       JSON.stringify({ name: 'Banana', price: '5,50', quantity: '12' }),
     )
-    localStorage.setItem('lastIndex', '1');
-    render(<ModalDelete idFruit="1" isOpen={true} onDeleted={() => {}} setOpen={() => {}} />)
-    await user.click(
-      screen.getByRole('button', {name: 'Sim, Excluir'}),
+    localStorage.setItem('lastIndex', '1')
+    renderWithStore(
+      <ModalDelete
+        idFruit="1"
+        isOpen={true}
+        onDeletingIdChange={onDeletingIdChange}
+        setOpen={() => {}}
+      />,
     )
-    await waitFor(()=>{
+    await user.click(
+      screen.getByRole('button', { name: 'Sim, Excluir' }),
+    )
+
+    expect(onDeletingIdChange).toHaveBeenCalledWith('1')
+
+    await waitFor(() => {
       expect(localStorage.getItem('1')).toBeNull()
     })
-
+    expect(onDeletingIdChange).toHaveBeenLastCalledWith(null)
   })
 })

@@ -9,43 +9,37 @@ import { ModalOptions } from '@/components/ModalOptions/ModalOptions'
 import { RedButton } from '@/components/RedButton/RedButton'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import type { Fruit } from '@/features/fruits/fruit'
-import { fruitRepository } from '@/features/fruits/local-storage-fruit-repository'
+import { loadFruits } from '@/features/fruits/fruits-slice'
+import { useAppDispatch, useAppSelector } from '@/lib/redux-hooks'
 import { imageSrc } from '@/lib/image-src'
 import { PackageOpen, Sparkles } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { selectAllFruits, selectFruitsStatus } from '@/features/fruits/fruits-selectors'
 
 export function HomePage() {
-  const [fruits, setFruits] = useState<Fruit[] | null>(null)
-  const [listFruits, setListFruits] = useState<Fruit[]>([])
+  const dispatch = useAppDispatch()
+
+  const fruits = useAppSelector(selectAllFruits)
+  const status = useAppSelector(selectFruitsStatus)
+  const [searchTerm, setSearchTerm] = useState('')
+
+  const listFruits =
+    searchTerm === ''
+      ? fruits
+      : fruits.filter((fruit) =>
+          fruit.name.toLocaleLowerCase('pt-BR').includes(searchTerm),
+        )
+
   const [openModal, setOpenModal] = useState(false)
   const [idFruit, setIdFruit] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const deletionTimer = useRef<number | null>(null)
 
   useEffect(() => {
-    let active = true
-
-    fruitRepository.list().then((storedFruits) => {
-      if (active) {
-        setFruits(storedFruits)
-        setListFruits(storedFruits)
-      }
-    })
-
-    return () => {
-      active = false
+    if (status === 'idle') {
+      dispatch(loadFruits())
     }
-  }, [])
-
-  useEffect(() => {
-    return () => {
-      if (deletionTimer.current !== null) {
-        window.clearTimeout(deletionTimer.current)
-      }
-    }
-  }, [])
+  }, [dispatch, status])
 
   const openOptions = (id: string) => {
     setIdFruit(id)
@@ -59,37 +53,11 @@ export function HomePage() {
     const searchData = String(formData.get('searchData') ?? '')
       .trim()
       .toLocaleLowerCase('pt-BR')
-    const availableFruits = fruits ?? []
 
-    setListFruits(
-      searchData === ''
-        ? availableFruits
-        : availableFruits.filter((fruit) =>
-            fruit.name.toLocaleLowerCase('pt-BR').includes(searchData),
-          ),
-    )
+    setSearchTerm(searchData)
   }
 
-  const handleDeleted = (deletedId: string) => {
-    setOpenModal(false)
-    setDeletingId(deletedId)
-
-    const reduceMotion =
-      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
-
-    deletionTimer.current = window.setTimeout(() => {
-      setFruits((currentFruits) =>
-        currentFruits?.filter((fruit) => fruit.id !== deletedId) ?? [],
-      )
-      setListFruits((currentFruits) =>
-        currentFruits.filter((fruit) => fruit.id !== deletedId),
-      )
-      setDeletingId(null)
-      deletionTimer.current = null
-    }, reduceMotion ? 0 : 240)
-  }
-
-  if (fruits === null) {
+  if (status === 'idle' || status === 'loading') {
     return (
       <AppShell>
         <div className="grid min-h-[60svh] place-items-center p-6">
@@ -247,7 +215,7 @@ export function HomePage() {
       <ModalOptions
         idFruit={idFruit}
         isOpen={openModal}
-        onDeleted={handleDeleted}
+        onDeletingIdChange={setDeletingId}
         setOpen={setOpenModal}
       />
     </AppShell>
