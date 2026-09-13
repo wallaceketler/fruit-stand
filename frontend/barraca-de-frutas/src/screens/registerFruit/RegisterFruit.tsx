@@ -7,7 +7,8 @@ import { FruitForm } from '@/components/FruitForm/FruitForm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import type { FruitInput } from '@/features/fruits/fruit'
-import { fruitRepository } from '@/features/fruits/local-storage-fruit-repository'
+import { createFruit } from '@/features/fruits/fruits-slice'
+import { useAppDispatch } from '@/lib/redux-hooks'
 import { imageSrc } from '@/lib/image-src'
 import { Check, PackageCheck, Tag } from 'lucide-react'
 import Link from 'next/link'
@@ -21,6 +22,8 @@ const steps = [
 ]
 
 export function RegisterFruit() {
+  const dispatch = useAppDispatch()
+
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -36,8 +39,8 @@ export function RegisterFruit() {
     }
 
     try {
-      await fruitRepository.create(fruit)
-      router.push(`/sucesso-cadastro/${encodeURIComponent(fruit.name)}`)
+      const createdFruit = await dispatch(createFruit(fruit)).unwrap()
+      router.push(`/sucesso-cadastro/${encodeURIComponent(createdFruit.name)}`)
     } catch (error) {
       setIsSubmitting(false)
       throw error

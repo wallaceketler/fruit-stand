@@ -6,8 +6,10 @@ import { AppShell } from '@/components/AppShell/AppShell'
 import { FruitForm } from '@/components/FruitForm/FruitForm'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import type { Fruit, FruitInput } from '@/features/fruits/fruit'
-import { fruitRepository } from '@/features/fruits/local-storage-fruit-repository'
+import type {  FruitInput } from '@/features/fruits/fruit'
+import { loadFruits, updateFruit } from '@/features/fruits/fruits-slice'
+import { useAppDispatch, useAppSelector } from '@/lib/redux-hooks'
+import { selectFruitById, selectFruitsStatus } from '@/features/fruits/fruits-selectors'
 import { imageSrc } from '@/lib/image-src'
 import { PackageOpen, RefreshCw } from 'lucide-react'
 import Link from 'next/link'
@@ -19,27 +21,18 @@ interface EditFruitProps {
 }
 
 export function EditFruit({ idFruit }: EditFruitProps) {
+  const dispatch = useAppDispatch()
+
   const router = useRouter()
-  const [fruit, setFruit] = useState<Fruit | null>(null)
-  const [loaded, setLoaded] = useState(false)
+  const fruit = useAppSelector((state) => selectFruitById(state, idFruit))
+  const status = useAppSelector(selectFruitsStatus)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
-    let active = true
+   if(status === 'idle'){ dispatch(loadFruits()) }
+  }, [dispatch, status])
 
-    fruitRepository.findById(idFruit).then((storedFruit) => {
-      if (active) {
-        setFruit(storedFruit)
-        setLoaded(true)
-      }
-    })
-
-    return () => {
-      active = false
-    }
-  }, [idFruit])
-
-  const saveOnLocalStorage = async (event: FormEvent<HTMLFormElement>) => {
+const saveOnLocalStorage = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setIsSubmitting(true)
 
@@ -51,7 +44,7 @@ export function EditFruit({ idFruit }: EditFruitProps) {
     }
 
     try {
-      await fruitRepository.update(idFruit, updatedFruit)
+      await dispatch(updateFruit({id: idFruit, input: updatedFruit})).unwrap()
       router.push('/')
     } catch (error) {
       setIsSubmitting(false)
@@ -59,7 +52,7 @@ export function EditFruit({ idFruit }: EditFruitProps) {
     }
   }
 
-  if (!loaded) {
+  if (status === 'loading' || status === 'idle') {
     return (
       <AppShell>
         <div className="grid min-h-[60svh] place-items-center p-6 font-black">Carregando fruta...</div>

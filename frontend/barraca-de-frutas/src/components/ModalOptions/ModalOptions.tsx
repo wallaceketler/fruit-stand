@@ -19,14 +19,14 @@ import { ModalDelete } from '../ModalDelete/ModalDelete'
 interface ModalOptionsProps {
   idFruit: string
   isOpen: boolean
-  onDeleted: (id: string) => void
+  onDeletingIdChange: (id: string | null) => void
   setOpen: (isOpen: boolean) => void
 }
 
 export function ModalOptions({
   idFruit,
   isOpen,
-  onDeleted,
+  onDeletingIdChange,
   setOpen,
 }: ModalOptionsProps) {
   const [modalDelete, setModalDelete] = useState(false)
@@ -78,7 +78,7 @@ export function ModalOptions({
       <ModalDelete
         idFruit={idFruit}
         isOpen={modalDelete}
-        onDeleted={onDeleted}
+        onDeletingIdChange={onDeletingIdChange}
         setOpen={setModalDelete}
       />
     </>
